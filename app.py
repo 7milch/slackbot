@@ -17,6 +17,8 @@ TARGET_EMOJI = "eyes"  # 反応したいemoji名
 async def handle_events(client: SocketModeClient, req: SocketModeRequest):
     try:
         logger.info(f"Received event: {req.type}")
+        # ACKを返す
+        await client.send_socket_mode_response(SocketModeResponse(envelope_id=req.envelope_id))
         if req.type == "events_api":
             event = req.payload["event"]
             logger.info(f"Event type: {event.get('type')}")
@@ -35,8 +37,6 @@ async def handle_events(client: SocketModeClient, req: SocketModeRequest):
                     text=f":{TARGET_EMOJI}: リアクションありがとう <@{user}>！"
                 )
                 logger.info("Reply sent successfully")
-        # イベント受信のACK
-        await client.send_socket_mode_response(SocketModeResponse(envelope_id=req.envelope_id))
     except Exception as e:
         logger.error(f"Error handling event: {e}")
         # エラーが発生してもACKを送信
@@ -48,12 +48,16 @@ async def main():
         logger.info(f"App Token: {SLACK_APP_TOKEN[:10]}...")
         logger.info(f"Bot Token: {SLACK_BOT_TOKEN[:10]}...")
         
+        # SocketModeClientを作成
         client = SocketModeClient(
             app_token=SLACK_APP_TOKEN,
             web_client=AsyncWebClient(token=SLACK_BOT_TOKEN)
         )
+
+        # SocketModeClientのsocket_mode_request_listenersリストにhandle_events関数を追加
         client.socket_mode_request_listeners.append(handle_events)
         
+        # 接続を開始
         logger.info("Connecting to Slack...")
         await client.connect()
         logger.info("Connected to Slack successfully!")
